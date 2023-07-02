@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Dashboard</title>
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+
+    <script>
+      const tables = [
+        {
+          id: "CM_HAM_DO_AI1/Temp_value",
+          name: "Temperature",
+          unit: "Celsius",
+        },
+        { id: "CM_HAM_PH_AI1/pH_value", name: "pH", unit: "n/a" },
+        { id: "CM_PID_DO/Process_DO", name: "Distilled Oxygen", unit: "%" },
+        { id: "CM_PRESSURE/Output", name: "Pressure", unit: "psi" },
+      ];
+      // fetch data from database with time and value
+      function fetchData(tableId, startTime, endTime) {
+        let url = `/data/${encodeURIComponent(tableId)}`;
+        console.log("inside fetch data", startTime, endTime);
+        if (startTime && endTime) {
+          url += `?start_time=${encodeURIComponent(
+            startTime
+          )}&end_time=${encodeURIComponent(endTime)}`;
+        }
+        console.log(url);
+        return fetch(url).then((response) => response.json());
+      }
+      //plot data on graph with time and value
+      function plotData(table, data) {
+        const trace = {
+          x: data.map((row) => row.time),
+          y: data.map((row) => row.value),
+          mode: "lines",
+          name: table.name,
+          line: { shape: "spline" },
+        };
+
+        const layout = {
+          title: `${table.name} (${table.unit})`,
+          xaxis: { title: "Time" },
+          yaxis: { title: `${table.name} (${table.unit})` },
+        };
+        
+        const divId = `${table.name
+          .toLowerCase()
+          .replace(" ", "-")
+          .replace("/", "-")}-plot`;
+        Plotly.newPlot(divId, [trace], layout);
+      }
+      //update plot with time
+      function updatePlots(startTime, endTime) {
+        for (const table of tables) {
+          fetchData(table.id, startTime, endTime).then((data) => {
+            plotData(table, data);
+          });
+        }
+      }
+
+      //search resutls with time
+      function searchResults() {
+        const startTime = document.getElementById("start-time").value;
+        const endTime = document.getElementById("end-time").value;
+        console.log(startTime, endTime);
+        updatePlots(startTime, endTime);
+      }
+
+      // auto refesh page
+      function refreshData() {
+        document.getElementById("start-time").value = "";
+        document.getElementById("end-time").value = "";
+        const startTime = null;
+        const endTime = null;
+        console.log(startTime, endTime);
+        updatePlots(startTime, endTime);
+      }
+      //download csv file
+      function downloadCSV(table) {
+        const startTime = document.getElementById("start-time").value;
+        const endTime = document.getElementById("end-time").value;
+        let url = `/download_csv/${table.id.replace("/", " ")}`;
+        if (startTime && endTime) {
+          url += `?start_time=${encodeURIComponent(
+            startTime
+          )}&end_time=${encodeURIComponent(endTime)}`;
+        }
+        console.log(url, "----");
+        window.location.href = url;
+      }
+
+      updatePlots();
+      setInterval(refreshData, 60000);
+    </script>
+  </head>
+  <body>
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col">
+          <label for="start-time">Start Time:</label>
+          <input type="datetime-local" value="start-val" id="start-time" />
+        </div>
+        <div class="col">
+          <label for="end-time">End Time:</label>
+          <input type="datetime-local" id="end-time" value="end-val" />
+        </div>
+        <div class="col">
+          <button
+            class="btn btn-primary mt-2"
+            onclick="searchResults
+                ();"
+          >
+            Search results
+          </button>
+        </div>
+        <div class="col">
+          <button
+            class="btn btn-primary mt-2"
+            onclick="refreshData
+                ();"
+          >
+            Refresh Data
+          </button>
+        </div>
+      </div>
+      <hr />
+      <div id="temperature-plot" class="mb-5"></div>
+      <div class="row" style="justify-content: center">
+        <button class="btn btn-primary" onclick="downloadCSV(tables[0]);">
+          Download Temperature CSV
+        </button>
+      </div>
+      <div id="ph-plot" class="mb-5"></div>
+      <div class="row" style="justify-content: center">
+        <button class="btn btn-primary" onclick="downloadCSV(tables[1]);">
+          Download pH CSV
+        </button>
+      </div>
+      <div id="distilled-oxygen-plot" class="mb-5"></div>
+      <div class="row" style="justify-content: center">
+        <button class="btn btn-primary" onclick="downloadCSV(tables[2]);">
+          Download Distilled Oxygen CSV
+        </button>
+      </div>
+      <div id="pressure-plot" class="mb-5"></div>
+      <div class="row" style="justify-content: center">
+        <button class="btn btn-primary" onclick="downloadCSV(tables[3]);">
+          Download Pressure CSV
+        </button>
+      </div>
+      <hr />
+      <div class="row"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  </body>
+</html>
